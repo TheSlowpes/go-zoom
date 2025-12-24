@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/eleanorhealth/go-common/pkg/errs"
 )
 
 type MeetingsServicer interface {

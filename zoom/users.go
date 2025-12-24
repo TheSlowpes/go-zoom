@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/url"
 	"time"
-
-	"github.com/eleanorhealth/go-common/pkg/errs"
 )
 
 type UsersServicer interface {
@@ -71,7 +69,7 @@ func (u *UsersService) List(ctx context.Context, opts *UsersListOptions) (*Users
 
 	res, err := u.client.request(ctx, http.MethodGet, "/users", opts, nil, out)
 	if err != nil {
-		return nil, res, errs.Wrap(err, "making request")
+		return nil, res, fmt.Errorf("Error making request: %w", err)
 	}
 
 	return out, res, nil
@@ -105,7 +103,7 @@ func (u *UsersService) Create(ctx context.Context, opts *UsersCreateOptions) (*U
 
 	res, err := u.client.request(ctx, http.MethodPost, "/users", nil, opts, out)
 	if err != nil {
-		return nil, res, errs.Wrap(err, "making request")
+		return nil, res, fmt.Errorf("Error making request: %w", err)
 	}
 
 	return out, res, nil
@@ -119,7 +117,7 @@ type UsersDeleteOptions struct {
 func (u *UsersService) Delete(ctx context.Context, userID string, opts *UsersDeleteOptions) (*http.Response, error) {
 	res, err := u.client.request(ctx, http.MethodDelete, fmt.Sprintf("/users/%s", url.QueryEscape(userID)), opts, nil, nil)
 	if err != nil {
-		return res, errs.Wrap(err, "making request")
+		return res, fmt.Errorf("Error making request: %w", err)
 	}
 
 	return res, nil

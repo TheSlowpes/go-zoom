@@ -9,9 +9,14 @@ import (
 )
 
 type PhoneService struct {
-	client   *Client
-	Accounts *PhoneAccountsService
-	Alerts   *PhoneAlertsService
+	client            *Client
+	Accounts          *PhoneAccountsService
+	Alerts            *PhoneAlertsService
+	AudioLibrary      *PhoneAudioLibraryService
+	AutoReceptionists *PhoneAutoReceptionistsService
+	BillingAccounts   *PhoneBillingAccountService
+	BlockedLists      *PhoneBlockedListService
+	CallHandling      *PhoneCallHandlingService
 }
 
 type PhoneAccountsService struct {
@@ -302,7 +307,7 @@ type CreateAlertRequest struct {
 	AlertSettingsName string `json:"alert_settings_name"`
 	Module            int    `json:"module"`
 	Rule              int    `json:"rule"`
-	RuleConditions    struct {
+	RuleConditions    []struct {
 		RuleConditionType  int    `json:"rule_condition_type"`
 		RuleConditionValue string `json:"rule_condition_value"`
 	} `json:"rule_conditions"`
@@ -368,4 +373,674 @@ type GetAlertSettingsResponse struct {
 	Frequency       int      `json:"frequency"`
 	Module          int      `json:"module"`
 	Rule            int      `json:"rule"`
+	RuleConditions  []struct {
+		RuleConditionType  int    `json:"rule_condition_type"`
+		RuleConditionValue string `json:"rule_condition_value"`
+	} `json:"rule_conditions"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/alerts/get/phone/alert_settings/{alertSettingId}
+func (p *PhoneAlertsService) GetAlertSettingsDetails(ctx context.Context, req *GetAlertSettingsRequest) (*GetAlertSettingsResponse, *http.Response, error) {
+	out := &GetAlertSettingsResponse{}
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/alert_settings/%s", req.AlertSettingID), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type ListAlertSettingsRequest struct {
+	*PaginationOptions
+	Module int `url:"module"`
+	Rule   int `url:"rule"`
+	Status int `url:"status"`
+}
+
+type ListAlertSettingsResponse struct {
+	*PaginationResponse
+	AlertSettings []*GetAlertSettingsResponse
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/alerts/get/phone/alert_settings
+func (p *PhoneAlertsService) ListAlertSettings(ctx context.Context, req *ListAlertSettingsRequest) (*ListAlertSettingsResponse, *http.Response, error) {
+	out := &ListAlertSettingsResponse{}
+	res, err := p.client.request(ctx, http.MethodGet, "/phone/alert_settings", req, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type UpdateAlertSettingsRequest struct {
+	AlertSettingsID string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/alerts/patch/phone/alert_settings/{alertSettingId}
+func (p *PhoneAlertsService) UpdateAlertSettings(ctx context.Context, req *UpdateAlertSettingsRequest, body *CreateAlertRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/alert_settings/%s", req.AlertSettingsID), nil, body, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type PhoneAudioLibraryService struct {
+	client *Client
+}
+
+type AddAudioItemPathParam struct {
+	UserId string
+}
+
+type AddAudioItemRequest struct {
+	AudioName     string `json:"audio_name"`
+	Text          string `json:"text,omitempty"`
+	VoiceAccent   string `json:"voice_accent,omitempty"`
+	VoiceLanguage string `json:"voice_language,omitempty"`
+}
+
+type AddAudioItemResponse struct {
+	AudioID string `json:"audio_id"`
+	Name    string `json:"name"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/post/phone/users/{userId}/audios
+func (p *PhoneAudioLibraryService) AddAudioItem(ctx context.Context, pathParam *AddAudioItemPathParam, req *AddAudioItemRequest) (*AddAudioItemResponse, *http.Response, error) {
+	out := &AddAudioItemResponse{}
+
+	res, err := p.client.request(ctx, http.MethodPost, fmt.Sprintf("/phone/users/%s/audios", pathParam.UserId), nil, req, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type AddAudioItemsPathParam struct {
+	UserId string
+}
+
+type AddAudioItemsRequest struct {
+	Attachments []struct {
+		AudioType       string `json:"audio_type"`
+		Base64Enconding string `json:"base64_encoding"`
+		Name            string `json:"name"`
+	} `json:"attachments"`
+}
+
+type AddAudioItemsResponse struct {
+	Audios []*AddAudioItemResponse `json:"audios"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/post/phone/users/{userId}/audios/batch
+func (p *PhoneAudioLibraryService) AddAudioItems(ctx context.Context, pathParam *AddAudioItemsPathParam, req *AddAudioItemsRequest) (*AddAudioItemsResponse, *http.Response, error) {
+	out := &AddAudioItemsResponse{}
+
+	res, err := p.client.request(ctx, http.MethodPost, fmt.Sprintf("/phone/users/%s/audios/batch", pathParam.UserId), nil, req, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type DeleteAudioItemPathParam struct {
+	AudioID string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/delete/phone/audios/{audioId}
+func (p *PhoneAudioLibraryService) DeleteAudioItem(ctx context.Context, pathParam *DeleteAudioItemPathParam) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/audios/%s", pathParam.AudioID), nil, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetAudioItemPathParam struct {
+	AudioID string
+}
+
+type GetAudioItemResponse struct {
+	AudioID       string `json:"audio_id"`
+	Name          string `json:"name"`
+	PlayURL       string `json:"play_url"`
+	Text          string `json:"text,omitempty"`
+	VoiceAccent   string `json:"voice_accent,omitempty"`
+	VoiceLanguage string `json:"voice_language,omitempty"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/get/phone/audios/{audioId}
+func (p *PhoneAudioLibraryService) GetAudioItem(ctx context.Context, pathParam *GetAudioItemPathParam) (*GetAudioItemResponse, *http.Response, error) {
+	out := &GetAudioItemResponse{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/audios/%s", pathParam.AudioID), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type ListAudioItemsPathParam struct {
+	UserId string
+}
+
+type ListAudioItemsResponse struct {
+	Audios []*GetAudioItemResponse `json:"audios"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/get/phone/users/{userId}/audios
+func (p *PhoneAudioLibraryService) ListAudioItems(ctx context.Context, pathParam *ListAudioItemsPathParam) (*ListAudioItemsResponse, *http.Response, error) {
+	out := &ListAudioItemsResponse{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/users/%s/audios", pathParam.UserId), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type UpdateAudioItemPathParam struct {
+	AudioID string
+}
+
+type UpdateAudioItemRequest struct {
+	Name string `json:"name"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/audio-library/patch/phone/audios/{audioId}
+func (p *PhoneAudioLibraryService) UpdateAudioItem(ctx context.Context, pathParam *UpdateAudioItemPathParam, req *UpdateAudioItemRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/audios/%s", pathParam.AudioID), nil, req, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type PhoneAutoReceptionistsService struct {
+	client *Client
+}
+
+type AddPolicySubSettingPathParams struct {
+	autoReceptionistId string
+	policyType         string
+}
+
+type AutoReceptionistPolicySubSetting struct {
+	VoiceMailAccessMember struct {
+		AccessUserID   string `json:"access_user_id"`
+		AccessUserType string `json:"access_user_type"`
+		Delete         bool   `json:"delete"`
+		Download       bool   `json:"download"`
+	} `json:"voice_mail_access_member"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/post/phone/auto_receptionists/{autoReceptionistId}/policies/{policyType}
+func (p *PhoneAutoReceptionistsService) AddPolicySubSetting(ctx context.Context, pathParams *AddPolicySubSettingPathParams, body *AutoReceptionistPolicySubSetting) (*AutoReceptionistPolicySubSetting, *http.Response, error) {
+	out := &AutoReceptionistPolicySubSetting{}
+
+	res, err := p.client.request(ctx, http.MethodPost, fmt.Sprintf("/phone/auto_receptionists/%s/policies/%s", pathParams.autoReceptionistId, pathParams.policyType), nil, body, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type AddAutoReceptionistRequest struct {
+	Name   string `json:"name"`
+	SiteID string `json:"site_id,omitempty"`
+}
+
+type AddAutoReceptionistResponse struct {
+	ExtensionNumber int    `json:"extension_number"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/post/phone/auto_receptionists
+func (p *PhoneAutoReceptionistsService) AddAutoReceptionist(ctx context.Context, req *AddAutoReceptionistRequest) (*AddAutoReceptionistResponse, *http.Response, error) {
+	out := &AddAutoReceptionistResponse{}
+
+	res, err := p.client.request(ctx, http.MethodPost, "/phone/auto_receptionists", nil, req, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type AssignPhoneNumbersPathParams struct {
+	autoReceptionistId string
+}
+
+type AssignPhoneNumbersRequest struct {
+	PhoneNumbers []struct {
+		ID     string `json:"id"`
+		Number string `json:"number"`
+	} `json:"phone_numbers"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/post/phone/auto_receptionists/{autoReceptionistId}/phone_numbers
+func (p *PhoneAutoReceptionistsService) AssignPhoneNumbers(ctx context.Context, pathParams *AssignPhoneNumbersPathParams, body *AssignPhoneNumbersRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPost, fmt.Sprintf("/phone/auto_receptionists/%s/phone_numbers", pathParams.autoReceptionistId), nil, body, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type DeleteAutoReceptionistPathParams struct {
+	autoReceptionistId string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/delete/phone/auto_receptionists/{autoReceptionistId}
+func (p *PhoneAutoReceptionistsService) DeleteAutoReceptionist(ctx context.Context, pathParams *DeleteAutoReceptionistPathParams) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/auto_receptionists/%s", pathParams.autoReceptionistId), nil, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type DeletePolicySubSettingPathParams struct {
+	autoReceptionistId string
+	policyType         string
+}
+
+type DeletePolicySubSettingQuery struct {
+	SharedIDs []string `url:"shared_ids"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/delete/phone/auto_receptionists/{autoReceptionistId}/policies/{policyType}
+func (p *PhoneAutoReceptionistsService) DeletePolicySubSetting(ctx context.Context, pathParams *DeletePolicySubSettingPathParams, query *DeletePolicySubSettingQuery) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/auto_receptionists/%s/policies/%s", pathParams.autoReceptionistId, pathParams.policyType), query, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetAutoReceptionistPathParams struct {
+	autoReceptionistId string
+}
+
+type AutoReceptionistDetails struct {
+	AudioPromptLanguage string `json:"audio_prompt_language"`
+	CostCenter          string `json:"cost_center"`
+	Department          string `json:"department"`
+	ExtensionID         string `json:"extension_id"`
+	ExtensionNumber     int    `json:"extension_number"`
+	HolidayHours        []struct {
+		From string `json:"from"`
+		ID   string `json:"id"`
+		Name string `json:"name"`
+		To   string `json:"to"`
+	} `json:"holiday_hours"`
+	Name           string `json:"name"`
+	OwnStorageName string `json:"own_storage_name"`
+	PhoneNumbers   []struct {
+		ID     string `json:"id"`
+		Number string `json:"number"`
+	} `json:"phone_numbers"`
+	RecordingStorageLocation string `json:"recording_storage_location"`
+	Site                     struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"site"`
+	TimeZone string `json:"time_zone"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/get/phone/auto_receptionists/{autoReceptionistId}
+func (p *PhoneAutoReceptionistsService) GetAutoReceptionist(ctx context.Context, pathParams *GetAutoReceptionistPathParams) (*AutoReceptionistDetails, *http.Response, error) {
+	out := &AutoReceptionistDetails{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/auto_receptionists/%s", pathParams.autoReceptionistId), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type GetAutoReceptionistPolicyPathParams struct {
+	autoReceptionistId string
+}
+
+type AutoReceptionistPolicy struct {
+	SMS struct {
+		*AccountSettingStates
+		InternationalSMS bool `json:"international_sms"`
+	}
+	VoicemailAccessMembers []struct {
+		AccessUserID   string `json:"access_user_id"`
+		AccessUserType string `json:"access_user_type"`
+		Delete         bool   `json:"delete"`
+		Download       bool   `json:"download"`
+		SharedID       string `json:"shared_id"`
+	} `json:"voicemail_access_members"`
+	VoicemailNotificationByEmail struct {
+		*AccountSettingStates
+		Modified                      string `json:"modified"`
+		ForwardVoicemailToEmail       bool   `json:"forward_voicemail_to_email"`
+		IncludeVoicemailFile          bool   `json:"include_voicemail_file"`
+		IncludeVoicemailTranscription bool   `json:"include_voicemail_transcription"`
+	} `json:"voicemail_notification_by_email"`
+	VoicemailTranscription struct {
+		*AccountSettingStates
+		Modified string `json:"modified"`
+	} `json:"voicemail_transcription"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/get/phone/auto_receptionists/{autoReceptionistId}/policies
+func (p *PhoneAutoReceptionistsService) GetAutoReceptionistPolicy(ctx context.Context, pathParams *GetAutoReceptionistPolicyPathParams) (*AutoReceptionistPolicy, *http.Response, error) {
+	out := &AutoReceptionistPolicy{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/auto_receptionists/%s/policies", pathParams.autoReceptionistId), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type ListAutoReceptionistsRequest struct {
+	*PaginationOptions
+}
+
+type ListAutoReceptionistsResponse struct {
+	*PaginationResponse
+	AutoReceptionists []*AutoReceptionistDetails `json:"auto_receptionists"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/get/phone/auto_receptionists
+func (p *PhoneAutoReceptionistsService) ListAutoReceptionists(ctx context.Context, req *ListAutoReceptionistsRequest) (*ListAutoReceptionistsResponse, *http.Response, error) {
+	out := &ListAutoReceptionistsResponse{}
+
+	res, err := p.client.request(ctx, http.MethodGet, "/phone/auto_receptionists", req, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type UnassignPhoneNumbersPathParams struct {
+	autoReceptionistId string
+	phoneNumberId      string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/delete/phone/auto_receptionists/{autoReceptionistId}/phone_numbers/{phoneNumberId}
+func (p *PhoneAutoReceptionistsService) UnassignPhoneNumbers(ctx context.Context, pathParams *UnassignPhoneNumbersPathParams) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/auto_receptionists/%s/phone_numbers/%s", pathParams.autoReceptionistId, pathParams.phoneNumberId), nil, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type UnassignAllPhoneNumbersPathParams struct {
+	autoReceptionistId string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/delete/phone/auto_receptionists/{autoReceptionistId}/phone_numbers
+func (p *PhoneAutoReceptionistsService) UnassignAllPhoneNumbers(ctx context.Context, pathParams *UnassignAllPhoneNumbersPathParams) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/auto_receptionists/%s/phone_numbers", pathParams.autoReceptionistId), nil, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type UpdatePolicySubSettingPathParams struct {
+	autoReceptionistId string
+	policyType         string
+}
+
+type UpdatePolicySubSettingRequest struct {
+	VoiceMailAccessMember struct {
+		AccessUserID   string `json:"access_user_id"`
+		AccessUserType string `json:"access_user_type"`
+		Delete         bool   `json:"delete"`
+		Download       bool   `json:"download"`
+		SharedID       string `json:"shared_id,omitempty"`
+	} `json:"voice_mail_access_member"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/patch/phone/auto_receptionists/{autoReceptionistId}/policies/{policyType}
+func (p *PhoneAutoReceptionistsService) UpdatePolicySubSetting(ctx context.Context, pathParams *UpdatePolicySubSettingPathParams, body *UpdatePolicySubSettingRequest) (*AutoReceptionistPolicySubSetting, *http.Response, error) {
+	out := &AutoReceptionistPolicySubSetting{}
+
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/auto_receptionists/%s/policies/%s", pathParams.autoReceptionistId, pathParams.policyType), nil, body, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type UpdateAutoReceptionistPathParams struct {
+	autoReceptionistId string
+}
+
+type UpdateAutoReceptionistRequest struct {
+	AudioPromptLanguage      string `json:"audio_prompt_language,omitempty"`
+	CostCenter               string `json:"cost_center,omitempty"`
+	Department               string `json:"department,omitempty"`
+	ExtensionNumber          int    `json:"extension_number,omitempty"`
+	Name                     string `json:"name,omitempty"`
+	RecordingStorageLocation string `json:"recording_storage_location,omitempty"`
+	TimeZone                 string `json:"time_zone,omitempty"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/patch/phone/auto_receptionists/{autoReceptionistId}
+func (p *PhoneAutoReceptionistsService) UpdateAutoReceptionist(ctx context.Context, pathParams *UpdateAutoReceptionistPathParams, body *UpdateAutoReceptionistRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/auto_receptionists/%s", pathParams.autoReceptionistId), nil, body, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type UpdateAutoReceptionistPolicyPathParams struct {
+	autoReceptionistId string
+}
+
+type UpdateAutoReceptionistPolicyRequest struct {
+	SMS struct {
+		Enable                    bool     `json:"enable"`
+		InternationalSMS          bool     `json:"international_sms"`
+		InternationalSMSCountries []string `json:"international_sms_countries,omitempty"`
+		Reset                     bool     `json:"reset"`
+	} `json:"sms,omitempty"`
+	VoicemailNotificationByEmail struct {
+		ForwardVoicemailToEmail       bool `json:"forward_voicemail_to_email"`
+		IncludeVoicemailFile          bool `json:"include_voicemail_file"`
+		IncludeVoicemailTranscription bool `json:"include_voicemail_transcription"`
+	} `json:"voicemail_notification_by_email,omitempty"`
+	VoicemailTranscription struct {
+		Enable bool `json:"enable"`
+		Reset  bool `json:"reset"`
+	} `json:"voicemail_transcription,omitempty"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/auto-receptionists/patch/phone/auto_receptionists/{autoReceptionistId}/policies
+func (p *PhoneAutoReceptionistsService) UpdateAutoReceptionistPolicy(ctx context.Context, pathParams *UpdateAutoReceptionistPolicyPathParams, body *UpdateAutoReceptionistPolicyRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/auto_receptionists/%s/policies", pathParams.autoReceptionistId), nil, body, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type PhoneBillingAccountService struct {
+	client *Client
+}
+
+type GetBillingAccountPathParams struct {
+	billingAccountId string
+}
+
+type BillingAccount struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/billing-accounts/get/phone/billing_accounts/{billingAccountId}
+func (p *PhoneBillingAccountService) GetBillingAccount(ctx context.Context, pathParams *GetBillingAccountPathParams) (*BillingAccount, *http.Response, error) {
+	out := &BillingAccount{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/billing_accounts/%s", pathParams.billingAccountId), nil, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type ListBillingAccountsRequest struct {
+	SiteID string `url:"site_id,omitempty"`
+}
+
+type ListBillingAccountsResponse struct {
+	BillingAccounts []*BillingAccount `json:"billing_accounts"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/billing-accounts/get/phone/billing_accounts
+func (p *PhoneBillingAccountService) ListBillingAccounts(ctx context.Context, req *ListBillingAccountsRequest) (*ListBillingAccountsResponse, *http.Response, error) {
+	out := &ListBillingAccountsResponse{}
+
+	res, err := p.client.request(ctx, http.MethodGet, "/phone/billing_accounts", req, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type PhoneBlockedListService struct {
+	client *Client
+}
+
+type CreateBlockedListRequest struct {
+	BlockType   string `json:"block_type"`
+	Comment     string `json:"comment,omitempty"`
+	Country     string `json:"country,omitempty"`
+	MatchType   string `json:"match_type,omitempty"`
+	PhoneNumber string `json:"phone_number,omitempty"`
+	Status      string `json:"status,omitempty"`
+}
+
+type CreateBlockedListResponse struct {
+	ID string `json:"id"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/blocked-list/post/phone/blocked_list
+func (p *PhoneBlockedListService) CreateBlockedList(ctx context.Context, req *CreateBlockedListRequest) (*CreateBlockedListResponse, *http.Response, error) {
+	out := &CreateBlockedListResponse{}
+
+	res, err := p.client.request(ctx, http.MethodPost, "/phone/blocked_list", nil, req, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type DeleteBlockedListPathParams struct {
+	BlockedListId string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/blocked-list/delete/phone/blocked_list/{blockedListId}
+func (p *PhoneBlockedListService) DeleteBlockedList(ctx context.Context, pathParams *DeleteBlockedListPathParams) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/blocked_list/%s", pathParams.BlockedListId), nil, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetBlockedListPathParams struct {
+	BlockedListId string
+}
+
+type BlockedListDetails struct {
+	BlockType   string `json:"block_type"`
+	Comment     string `json:"comment"`
+	ID          string `json:"id"`
+	MatchType   string `json:"match_type"`
+	PhoneNumber string `json:"phone_number"`
+	Status      string `json:"status"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/blocked-list/get/phone/blocked_list/{blockedListId}
+func (p *PhoneBlockedListService) GetBlockedList(ctx context.Context, pathParams *GetBlockedListPathParams) (*BlockedListDetails, *http.Response, error) {
+	out := &BlockedListDetails{}
+
+	res, err := p.client.request(ctx, http.MethodGet, fmt.Sprintf("/phone/blocked_list/%s", pathParams.BlockedListId), nil, nil, out)
+
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type ListBlockedListRequest struct {
+	*PaginationOptions
+}
+
+type ListBlockedListResponse struct {
+	*PaginationResponse
+	BlockedList []BlockedListDetails `json:"blocked_list"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/blocked-list/get/phone/blocked_list
+func (p *PhoneBlockedListService) ListBlockedList(ctx context.Context, req *ListBlockedListRequest) (*ListBlockedListResponse, *http.Response, error) {
+	out := &ListBlockedListResponse{}
+
+	res, err := p.client.request(ctx, http.MethodGet, "/phone/blocked_list", req, nil, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type UpdateBlockedListPathParams struct {
+	BlockedListId string
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/blocked-list/patch/phone/blocked_list/{blockedListId}
+func (p *PhoneBlockedListService) UpdateBlockedList(ctx context.Context, pathParams *UpdateBlockedListPathParams, body *CreateBlockedListRequest) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodPatch, fmt.Sprintf("/phone/blocked_list/%s", pathParams.BlockedListId), nil, body, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type PhoneCallHandlingService struct {
+	client *Client
+}
+
+type AddCallHandlingPathParams struct {
+	ExtensionId string
+	SettingType string
 }

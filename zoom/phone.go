@@ -1044,3 +1044,117 @@ type AddCallHandlingPathParams struct {
 	ExtensionId string
 	SettingType string
 }
+
+type AddCallHandlingRequest struct {
+	Settings       interface{} `json:"settings"`
+	SubSettingType string      `json:"sub_setting_type,omitempty"`
+}
+
+type CallForwardingSettings struct {
+	Description string `json:"description,omitempty"`
+	HolidayID   string `json:"holiday_id,omitempty"`
+	PhoneNumber string `json:"phone_number,omitempty"`
+}
+
+type HolidaySettings struct {
+	From string `json:"from,omitempty"`
+	Name string `json:"name,omitempty"`
+	To   string `json:"to,omitempty"`
+}
+
+type AddCallHandlingResponse struct {
+	CallForwardingID string `json:"call_forwarding_id"`
+	HolidayID        string `json:"holiday_id"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/call-handling/post/phone/extensions/{extensionId}/call_handling/{settingType}
+func (p *PhoneCallHandlingService) AddCallHandling(ctx context.Context, pathParams *AddCallHandlingPathParams, req *AddCallHandlingRequest) (*AddCallHandlingResponse, *http.Response, error) {
+	out := &AddCallHandlingResponse{}
+
+	res, err := p.client.request(ctx, http.MethodPost, fmt.Sprintf("/phone/extensions/%s/call_handling/%s", pathParams.ExtensionId, pathParams.SettingType), nil, req, out)
+	if err != nil {
+		return nil, res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return out, res, nil
+}
+
+type DeleteCallHandlingPathParams struct {
+	ExtensionId string
+	SettingType string
+}
+
+type DeleteCallHandlingQuery struct {
+	CallForwardingId string `url:"call_forwarding_id,omitempty"`
+	HolidayId        string `url:"holiday_id,omitempty"`
+}
+
+// https://developers.zoom.us/docs/api/phone/#tag/call-handling/delete/phone/extensions/{extensionId}/call_handling/{settingType}
+func (p *PhoneCallHandlingService) DeleteCallHandling(ctx context.Context, pathParams *DeleteCallHandlingPathParams, query *DeleteCallHandlingQuery) (*http.Response, error) {
+	res, err := p.client.request(ctx, http.MethodDelete, fmt.Sprintf("/phone/extensions/%s/call_handling/%s", pathParams.ExtensionId, pathParams.SettingType), query, nil, nil)
+	if err != nil {
+		return res, fmt.Errorf("Error making request: %w", err)
+	}
+
+	return res, nil
+}
+
+type GetCallHandlingSettingsPathParams struct {
+	ExtensionId string
+}
+
+type BusinessHoursSettings struct {
+	Settings struct {
+		AllowMembersToReset  bool `json:"allow_members_to_reset"`
+		AudioWhileConnecting struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		} `json:"audio_while_connecting"`
+		BusyRouting struct {
+			Action                          int  `json:"action"`
+			AllowCallersCheckVoicemail      bool `json:"allow_callers_check_voicemail"`
+			BusyPlayCalleeVoicemailGreeting bool `json:"busy_play_callee_voicemail_greeting"`
+			ConnectToOperator               bool `json:"connect_to_operator"`
+			ForwardTo                       struct {
+				Description       string `json:"description,omitempty"`
+				DisplayName       string `json:"display_name,omitempty"`
+				ExtensionID       string `json:"extension_id,omitempty"`
+				ExtensionNumber   int    `json:"extension_number,omitempty"`
+				ExtensionType     string `json:"extension_type,omitempty"`
+				ID                string `json:"id,omitempty"`
+				PhoneNumber       string `json:"phone_number,omitempty"`
+				VoicemailGreeting struct {
+					ID   string `json:"id,omitempty"`
+					Name string `json:"name,omitempty"`
+				} `json:"voicemail_greeting,omitempty"`
+				MessageGreeting struct {
+					ID   string `json:"id,omitempty"`
+					Name string `json:"name,omitempty"`
+				} `json:"message_greeting,omitempty"`
+				Operator struct {
+					DisplayName     string `json:"display_name,omitempty"`
+					ExtensionID     string `json:"extension_id,omitempty"`
+					ExtensionNumber int    `json:"extension_number,omitempty"`
+					ExtensionType   string `json:"extension_type,omitempty"`
+					ID              string `json:"id,omitempty"`
+				} `json:"operator,omitempty"`
+				PlayCalleeVoicemailGreeting   bool `json:"play_callee_voicemail_greeting,omitempty"`
+				RequirePress1BeforeConnecting bool `json:"require_press_1_before_connecting,omitempty"`
+				VoicemailLeavingInstructions  struct {
+					ID   string `json:"id,omitempty"`
+					Name string `json:"name,omitempty"`
+				} `json:"voicemail_leaving_instructions,omitempty"`
+				CallDistribution struct {
+					HandleMultipleCalls           bool   `json:"handle_multiple_calls,omitempty"`
+					RingDuration                  int    `json:"ring_duration,omitempty"`
+					RingMode                      string `json:"ring_mode,omitempty"`
+					SkipOfflineDevicePhoneNumbers bool   `json:"skip_offline_device_phone_numbers,omitempty"`
+				} `json:"call_distribution,omitempty"`
+			} `json:"forward_to"`
+		} `json:"busy_routing"`
+	} `json:"settings"`
+	SubSettingType string `json:"sub_setting_type"`
+}
+
+type CallHandlingSettings struct {
+}
